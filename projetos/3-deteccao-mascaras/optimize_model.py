@@ -22,7 +22,7 @@ try:
     model_path = "model.tflite"
 
     if os.path.exists(tflite_16):
-        os.rename(tflite_path, model_path)
+        os.rename(tflite_16, model_path)
         shutil.rmtree("model_saved_model")
     elif os.path.exists(tflite_32):
         os.rename(tflite_32, model_path)
