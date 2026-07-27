@@ -14,10 +14,14 @@ try:
     model_path = "model.tflite"
 
     if os.path.exists(tflite_int8):
+        
+        if os.path.exists(model_path):
+            os.remove(model_path)
+            
         os.rename(tflite_int8, model_path)
-        shutil.rmtree("model_saved_model")
+        print("O modelo otimizado foi salvo como 'model.tflite' na raiz do projeto.")
     elif not os.path.exists(model_path):
-        print("Atenção: A exportação terminou, mas o arquivo 'model.tflite' não foi encontrado na raiz.")
+        print("Atenção: A exportação terminou, mas o arquivo 'model.tflite' não foi encontrado.")
 
     if os.path.exists(model_path):
         print("O modelo otimizado foi salvo como 'model.tflite' na raiz do projeto.")
