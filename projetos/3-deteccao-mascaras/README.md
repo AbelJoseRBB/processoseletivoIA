@@ -133,6 +133,7 @@ TOTAL                                       84
 Com base nos dados obtidos, é possível observar uma superioridade da quantidade de exemplos da classe `with_mask` perante as outras classes, fato que acarreta em desbalanceamento nos resultados finais. 
 
 Pelos exemplos analisados, em `inferencia_exemplos/predicoes`, os resultados foram obtidos tendo uma acurácia satistfatório, porém chamando a atenção para um "erro", na qual a análise foi realizada em um imagem na parede.  
+
 ---
 
 ## 📄 Créditos do Dataset
