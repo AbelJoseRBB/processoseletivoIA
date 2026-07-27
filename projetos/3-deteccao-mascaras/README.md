@@ -22,148 +22,117 @@ O foco não é apenas obter alta acurácia, mas **compreender o fluxo completo**
 
 **fine-tuning → validação → exportação → otimização para edge**
 
-## 🎯 Conjunto de Dados
-
-Este projeto já vem com um dataset **pronto para uso**, na pasta [`dataset/`](dataset/):
-o **Face Mask Detection Dataset** ([Kaggle, andrewmvd](https://www.kaggle.com/datasets/andrewmvd/face-mask-detection),
-licença **CC0 1.0** — domínio público), já convertido do formato original (Pascal VOC)
-para o formato esperado pelo Ultralytics YOLO.
-
-- **853 imagens** de rostos, com bounding boxes anotadas
-- **3 classes:** `with_mask`, `without_mask`, `mask_weared_incorrect`
-- Já dividido em treino (~80%) e validação (~20%)
-- ⚠️ O dataset é **desbalanceado** — a classe `mask_weared_incorrect` tem
-  significativamente menos exemplos que as outras duas. Isso é uma
-  característica real de datasets de detecção e não é um bug — comente esse
-  ponto no seu relatório se perceber o modelo com dificuldade nessa classe.
-
-Você **não precisa** baixar nada do Kaggle nem escrever código de conversão de
-anotações — isso já está pronto em `dataset/`. Seu trabalho começa direto no
-fine-tuning do modelo.
-
-## ✅ Requisitos Obrigatórios
-
-### Etapa 1 — Fine-tuning do Modelo (`train_model.py`)
-
-Implemente, usando a biblioteca **Ultralytics** (YOLO):
-
-- Carregamento do modelo pré-treinado **YOLO11n** (`YOLO("yolo11n.pt")`) —
-  esta é a única exceção à regra de "sem modelos pré-treinados" do processo
-  seletivo, válida especificamente para este projeto
-- Fine-tuning no dataset fornecido (`dataset/data.yaml`), em **CPU**, com um
-  número de épocas modesto (ex: 15-30 — YOLO converge relativamente rápido
-  em fine-tuning, mesmo em CPU)
-- Ao final do treino, copie os pesos resultantes (`runs/detect/train/weights/best.pt`)
-  para a raiz desta pasta, com o nome **`model.pt`**
-
-### Etapa 2 — Otimização do Modelo (`optimize_model.py`)
-
-Implemente:
-
-- Carregamento do `model.pt` treinado
-- Exportação para **TensorFlow Lite** via `model.export(format="tflite")`
-  (a Ultralytics gera automaticamente um arquivo `model.tflite` na mesma pasta)
-
-> 💡 Na primeira execução, a Ultralytics pode instalar automaticamente
-> dependências extras necessárias para a exportação (isso é esperado e pode
-> levar alguns minutos).
-
-### Etapa 3 — Inferência com o Modelo Otimizado (`run_inference.py`)
-
-Implemente:
-
-- Carregamento especificamente do **`model.tflite`** (o artefato de edge — não
-  o `model.pt`) usando `YOLO("model.tflite", task="detect")`
-- Execução de inferência em pelo menos **5 imagens** de `dataset/images/val/`,
-  **uma de cada vez** — o `model.tflite` exportado aceita apenas 1 imagem por
-  chamada (batch=1), que é aliás o cenário real de uso em edge
-- Exibição no terminal, para cada imagem, do número de detecções encontradas
-
-> 💡 O Ultralytics salva automaticamente as imagens anotadas com as caixas
-> preditas em `runs/detect/...` (pasta já ignorada pelo `.gitignore` — não
-> precisa, nem deve, ser commitada). Abra essas imagens localmente pra conferir
-> visualmente as predições antes de escrever o relatório.
->
-> 💡 Essa etapa existe porque uma métrica agregada (mAP) pode esconder
-> problemas que só aparecem olhando exemplos individuais — especialmente dado
-> o desbalanceamento de classes deste dataset.
-
-## 📂 Estrutura da Pasta
-
-⚠️ Não altere os nomes dos arquivos nem a estrutura de `dataset/`.
-
-```
-projetos/3-deteccao-mascaras/
-├── train_model.py         # ✏️ Fine-tuning do modelo
-├── optimize_model.py      # ✏️ Exportação e otimização
-├── run_inference.py       # ✏️ Inferência de exemplo com o modelo otimizado
-├── requirements.txt       # 📄 Dependências do projeto
-├── model.pt               # 🤖 Gerado por você — deve ser commitado
-├── model.tflite            # ⚡ Gerado por você — deve ser commitado
-├── README.md               # 📝 Este arquivo (também usado como relatório)
-└── dataset/                # 📦 Dataset já pronto (não modificar)
-    ├── data.yaml
-    ├── images/{train,val}/
-    └── labels/{train,val}/
-```
-
-## ⚠️ Restrições e Considerações de Engenharia
-
-- Modelo base: **YOLO11n** (variante *nano*, indicada para CPU/edge) — não use
-  variantes maiores (s/m/l/x)
-- Treinamento apenas em CPU
-- Fine-tuning é permitido e esperado (única exceção às regras gerais do processo seletivo)
-- **Não é esperada detecção perfeita**, especialmente na classe minoritária
-  (`mask_weared_incorrect`) — o objetivo é demonstrar que o pipeline completo
-  (fine-tuning → validação → exportação) funciona corretamente
-- O tempo de treinamento e exportação deste projeto tende a ser **maior** que
-  o dos Projetos 1 e 2 — reserve tempo extra para rodar localmente antes de enviar
-
-## ⚖️ Critérios de Avaliação
-
-- **Funcionalidade** — execução correta dos scripts e geração de `model.pt` e `model.tflite`
-- **Qualidade do modelo** — mAP50 no conjunto de validação acima do mínimo esperado
-- **Edge AI** — exportação correta para `.tflite`
-- **Documentação** — preenchimento adequado do relatório abaixo
-
----
-
 ## 📝 Relatório do Candidato
 
-👤 **Nome Completo:**
+👤 **Nome Completo: Abel José Rocha Barros Bezerra**
 
 ### 1️⃣ Resumo da Abordagem
 
-Descreva os hiperparâmetros de fine-tuning utilizados (épocas, tamanho de
-imagem, batch size) e quaisquer ajustes feitos para lidar com o desbalanceamento
-de classes, se houver.
+Para a realização do fine-tuning foram os seguintes:
+
+```python
+    model.train(
+        data = "dataset/data.yaml",
+        epochs = 30,
+        batch = 12,
+        device = "cpu",
+        imgsz = 640,
+        workers = 4,
+
+        mosaic = 1.0,
+        fliplr = 0.5,
+
+        name = "train",
+        exist_ok = True
+    ) 
+``` 
+Foi utilizado técnicas ligeiras de Data Augmentation com `mosaic = 1.0` e `fliplr = 0.5` para combater o desbalanceamento das classes, sem sobrecarregar o treinamento.
 
 ### 2️⃣ Bibliotecas Utilizadas
 
-Liste as principais bibliotecas utilizadas, preferencialmente com suas versões.
+- **Ultralytics (v8.4.104):** Framework principal para treino e inferência.
+
+- **PyTorch (torch v2.13.0):** Backend matemático do treino.
+
+- **Torchvision:** Dependência nativa para operações visuais (NMS).
+
+- **Google LiteRT (litert-torch>=0.9.0 e ai-edge-litert>=2.1.4):** Bibliotecas exigidas para a conversão de modelos Edge AI para o formato TFLite/LiteRT.
 
 ### 3️⃣ Técnica de Otimização do Modelo
 
-Explique o processo de exportação para TFLite realizado em `optimize_model.py`.
+A exportação foi realizada a partir da função:
+
+```python
+    model.export(format= "tflite", int8 = True, data = "dataset/data.yaml")
+```
+
+Utilizando a técnica de Quantização INT8 foi possível calibrar o modelo usando os dados de validação para converter os pesos de alta precisão para inteiros de 8 bits, assim, obtendo uma redução drástica de tamanho e aumento de velocidade.
 
 ### 4️⃣ Resultados Obtidos
 
-Informe o mAP50 (e, se possível, o mAP50-95) obtido na validação, por classe se
-possível, e o tamanho dos arquivos `model.pt` e `model.tflite`.
+O treinamento atingiu os seguintes resultados:
+
+**Modelo original - Model.pt**
+
+`mAP50 global`: 0.784
+
+`mAP50-95 global`: 0.547
+
+**Modelo otimizado - Model.tflite**
+
+`mAP50 global`: 0.677
+
+`mAP50-95 global`: 0.368
+
+**Desempenho por Classe**
+
+`with_mask`: 0.972
+
+`without_mask`: 0.798
+
+`mask_weared_incorrect`: 0.581
+
+**Tamanhos**
+
+`model.pt`: 5.3 MB
+
+`model.tflite`: 2.9 MB
 
 ### 5️⃣ Comentários Adicionais (Opcional)
 
-Dificuldades encontradas, decisões técnicas importantes, limitações do modelo
-(ex: desempenho na classe minoritária), aprendizados durante o desafio.
+Neste projeto, pude perceber a importância de trabalhar em um ambiente padronizado e bem configurado, uma vez que parte do desenvolvimento envolveu lidar com conflitos de dependências, configuração do ambiente de execução e ajustes das bibliotecas necessárias para o treinamento e otimização do modelo.
+
+Outro ponto importante a se notar foi o impacto negativo do desbalanceamento do conjunto de dados nos resultados obtidos, provocando por busca de técnicas para mitigar essa limitação, como a Data Augmentation, forçando o modelo a extrair mais padrões visuais da pouca quantidade de exemplos da classe `mask_weared_incorrect`.
 
 ### 6️⃣ Exemplo de Inferência
 
-Cole a saída do terminal ao rodar `run_inference.py` (número de detecções por
-imagem), e comente brevemente sobre o que observou ao abrir as imagens
-anotadas em `runs/detect/inferencia_exemplos/predicoes/` — por exemplo, se as
-caixas ficaram bem localizadas, se houve confusão entre classes, ou se a
-classe minoritária (`mask_weared_incorrect`) teve desempenho visivelmente pior.
+```
+============================================================
+Projeto 3 — Inferência com model.tflite (Edge AI)
+============================================================
 
+Rodando inferência em 5 amostras usando model.tflite:
+
+Imagem                               Detecções  Detalhes
+----------------------------------------------------------------------
+Loading /workspaces/processoseletivoIA/projetos/3-deteccao-mascaras/model.tflite for LiteRT inference...
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+Results saved to /workspaces/processoseletivoIA/projetos/3-deteccao-mascaras/runs/detect/inferencia_exemplos/predicoes
+maksssksksss105.jpg                         11  [11x with_mask]
+Results saved to /workspaces/processoseletivoIA/projetos/3-deteccao-mascaras/runs/detect/inferencia_exemplos/predicoes
+maksssksksss107.jpg                          1  [1x with_mask]
+Results saved to /workspaces/processoseletivoIA/projetos/3-deteccao-mascaras/runs/detect/inferencia_exemplos/predicoes
+maksssksksss11.jpg                          43  [42x with_mask, 1x mask_weared_incorrect]
+Results saved to /workspaces/processoseletivoIA/projetos/3-deteccao-mascaras/runs/detect/inferencia_exemplos/predicoes
+maksssksksss113.jpg                         10  [9x with_mask, 1x without_mask]
+Results saved to /workspaces/processoseletivoIA/projetos/3-deteccao-mascaras/runs/detect/inferencia_exemplos/predicoes
+maksssksksss12.jpg                          19  [16x with_mask, 3x without_mask]
+----------------------------------------------------------------------
+TOTAL                                       84
+```
+Com base nos dados obtidos, é possível observar uma superioridade da quantidade de exemplos da classe `with_mask` perante as outras classes, fato que acarreta em desbalanceamento nos resultados finais. 
+
+Pelos exemplos analisados, em `inferencia_exemplos/predicoes`, os resultados foram obtidos tendo uma acurácia satistfatório, porém chamando a atenção para um "erro", na qual a análise foi realizada em um imagem na parede.  
 ---
 
 ## 📄 Créditos do Dataset
